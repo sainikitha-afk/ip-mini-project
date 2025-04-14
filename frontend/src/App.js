@@ -7,6 +7,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import ProjectDashboard from "./components/ProjectDashboard";
 import DownloadProjects from './components/DownloadProjects';
+import Notifications from './components/Notifications';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth(); // Get user from AuthContext
@@ -23,6 +24,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/edit-project/:id" component={EditProjectForm} />
           <Route path="/projects/download" element={ <ProtectedRoute> <DownloadProjects /> </ProtectedRoute> } />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
 
           {/* Protect /projects routes */}
           <Route

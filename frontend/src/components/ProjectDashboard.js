@@ -57,6 +57,7 @@ const ProjectDashboard = () => {
       <div className="tabs">
         <button onClick={() => navigate("/projects/add")}>Add New Project</button>
         <button onClick={() => navigate("/projects/download")}> Download Projects </button>
+        <button onClick={() => navigate("/notifications")}>View Notifications</button>
       </div>
   
       <div className="tab-content">

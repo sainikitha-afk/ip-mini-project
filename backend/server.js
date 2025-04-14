@@ -248,6 +248,43 @@ app.get("/projects/download", authenticateToken, (req, res) => {
   });
 });
 
+// Notifications: Get recent and active projects
+app.get("/projects/notifications", authenticateToken, (req, res) => {
+  const projects = readExcel("projects.xlsx");
+
+  console.log("User:", req.user.email);
+  console.log("All projects:", projects.length);
+
+  const now = new Date();
+  const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+  const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+  const recentProjects = projects.filter((p) => {
+    return (
+      p.createdBy === req.user.email &&
+      new Date(p.createdAt) >= fifteenDaysAgo
+    );
+  });
+
+  const activeProjects = projects.filter((p) => {
+    return (
+      p.createdBy === req.user.email &&
+      new Date(p.createdAt) >= sixtyDaysAgo
+    );
+  });
+
+  // ✅ Add these logs below
+  console.log("Recent projects:", recentProjects.length);
+  console.log("Active projects:", activeProjects.length);
+  console.log("Recent titles:", recentProjects.map(p => p.projectTitle));
+  console.log("Active titles:", activeProjects.map(p => p.projectTitle));
+
+  res.json({
+    recentProjects,
+    activeProjects,
+  });
+});
+
 app.get("/projects/:id", authenticateToken, (req, res) => {
   const id = parseInt(req.params.id);
   const projects = readExcel("projects.xlsx");
@@ -262,7 +299,6 @@ app.get("/projects/:id", authenticateToken, (req, res) => {
 
   res.json(project);
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
