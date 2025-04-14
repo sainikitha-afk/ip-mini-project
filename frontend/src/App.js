@@ -1,3 +1,4 @@
+import './App.css';
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext"; // Import `useAuth` to check user
 import ProjectForm from "./components/ProjectForm";

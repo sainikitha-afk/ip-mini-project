@@ -37,35 +37,33 @@ const Notifications = () => {
   if (loading) return <p>Loading notifications...</p>;
 
   return (
-    <div>
+    <div className="styled-notifications-container">
       <h2>🔔 Notifications</h2>
-
-      <section>
+  
+      <section className="notif-section">
         <h3>🆕 New Projects (Last 15 Days)</h3>
         {recentProjects.length === 0 ? (
-          <p>No new consultancy projects in the last 15 days.</p>
+          <p className="empty-text">No new consultancy projects in the last 15 days.</p>
         ) : (
           <ul>
             {recentProjects.map((project) => (
               <li key={project.ID}>
-                <strong>{project.projectTitle}</strong> from{" "}
-                {project.industryName} on {new Date(project.createdAt).toLocaleDateString()}
+                <strong>{project.projectTitle}</strong> from <em>{project.industryName}</em> on <span>{new Date(project.createdAt).toLocaleDateString()}</span>
               </li>
             ))}
           </ul>
         )}
       </section>
-
-      <section>
+  
+      <section className="notif-section">
         <h3>🟢 Active Projects (Last 60 Days)</h3>
         {activeProjects.length === 0 ? (
-          <p>No active consultancy projects in the last 60 days.</p>
+          <p className="empty-text">No active consultancy projects in the last 60 days.</p>
         ) : (
           <ul>
             {activeProjects.map((project) => (
               <li key={project.ID}>
-                <strong>{project.projectTitle}</strong> from{" "}
-                {project.industryName} on {new Date(project.createdAt).toLocaleDateString()}
+                <strong>{project.projectTitle}</strong> from <em>{project.industryName}</em> on <span>{new Date(project.createdAt).toLocaleDateString()}</span>
               </li>
             ))}
           </ul>
@@ -73,6 +71,7 @@ const Notifications = () => {
       </section>
     </div>
   );
+  
 };
 
 export default Notifications;

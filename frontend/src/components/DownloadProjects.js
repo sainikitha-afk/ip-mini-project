@@ -68,45 +68,40 @@ const DownloadProjects = () => {
   };
 
   return (
-    <div>
-      <h2>Download Filtered Projects</h2>
-      <div>
+    <div className="styled-download-container">
+      <h2>📥 Download Filtered Projects</h2>
+  
+      <div className="form-group">
         <label>Faculty Name:</label>
         <select name="facultyName" value={filters.facultyName} onChange={handleChange}>
           <option value="">All</option>
           {facultyList.map((faculty, idx) => (
-            <option key={idx} value={faculty}>
-              {faculty}
-            </option>
+            <option key={idx} value={faculty}>{faculty}</option>
           ))}
         </select>
       </div>
-
-      <div>
+  
+      <div className="form-group">
         <label>Industry Name:</label>
         <select name="industryName" value={filters.industryName} onChange={handleChange}>
           <option value="">All</option>
           {industryList.map((industry, idx) => (
-            <option key={idx} value={industry}>
-              {industry}
-            </option>
+            <option key={idx} value={industry}>{industry}</option>
           ))}
         </select>
       </div>
-
-      <div>
+  
+      <div className="form-group">
         <label>Academic Year:</label>
         <select name="academicYear" value={filters.academicYear} onChange={handleChange}>
           <option value="">All</option>
           {academicYears.map((year, idx) => (
-            <option key={idx} value={year}>
-              {year}
-            </option>
+            <option key={idx} value={year}>{year}</option>
           ))}
         </select>
       </div>
-
-      <div>
+  
+      <div className="form-group">
         <label>Minimum Amount Sanctioned:</label>
         <input
           type="number"
@@ -116,10 +111,11 @@ const DownloadProjects = () => {
           placeholder="₹50000 / ₹100000"
         />
       </div>
-
-      <button onClick={handleDownload}>Download Excel</button>
+  
+      <button className="submit-btn" onClick={handleDownload}>Download Excel</button>
     </div>
   );
+  
 };
 
 export default DownloadProjects;

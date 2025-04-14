@@ -95,18 +95,6 @@ app.post("/login", async (req, res) => {
   res.json({ token });
 });
 
-// Get all projects
-app.get("/projects", authenticateToken, (req, res) => {
-  const allProjects = readExcel("projects.xlsx");
-
-  // Only show projects created by the logged-in user
-  const userProjects = allProjects.filter(
-    (project) => project.createdBy === req.user.email
-  );
-
-  res.json(userProjects);
-});
-
 // Add a new project (No changes)
 app.post(
   "/projects",
@@ -285,6 +273,19 @@ app.get("/projects/notifications", authenticateToken, (req, res) => {
   });
 });
 
+// Get all projects for the logged-in user (dashboard)
+app.get("/projects", authenticateToken, (req, res) => {
+  const projects = readExcel("projects.xlsx");
+  const userProjects = projects.filter(p => p.createdBy === req.user.email);
+
+  // 🔍 Add these logs to verify
+  console.log("📌 Authenticated user:", req.user.email);
+  console.log("📦 Total projects in file:", projects.length);
+  console.log("✅ Projects created by user:", userProjects.length);
+
+  res.json(userProjects);
+});
+
 app.get("/projects/:id", authenticateToken, (req, res) => {
   const id = parseInt(req.params.id);
   const projects = readExcel("projects.xlsx");
@@ -299,6 +300,7 @@ app.get("/projects/:id", authenticateToken, (req, res) => {
 
   res.json(project);
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
