@@ -51,9 +51,16 @@ function generateId(projects) {
 // Middleware to authenticate JWT token
 function authenticateToken(req, res, next) {
   const token = req.headers["authorization"];
+  console.log("Token received:", token); // ✅ Debug log
+
   if (!token) return res.sendStatus(401);
+
   jwt.verify(token.split(" ")[1], SECRET_KEY, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) {
+      console.log("JWT verification error:", err); // ✅ Debug log
+      return res.sendStatus(403);
+    }
+
     req.user = user;
     next();
   });
@@ -189,27 +196,6 @@ app.put('/projects/:id', authenticateToken, upload.fields([
   }
 });
 
-// Get a project by ID (No changes)
-app.get("/projects/:id", authenticateToken, (req, res) => {
-  const id = parseInt(req.params.id);
-  const projects = readExcel("projects.xlsx");
-
-  console.log("User from token:", req.user.email);
-  console.log("Project ID requested:", id);
-  console.log("All project creators:", projects.map(p => p.createdBy));
-
-  const project = projects.find(
-    (p) => parseInt(p.ID) === id && p.createdBy === req.user.email
-  );
-
-  if (!project) {
-    return res.status(404).json({ message: "Project not found" });
-  }
-
-  res.json(project);
-});
-
-
 // Delete a project (No changes)
 app.delete("/projects/:id", authenticateToken, (req, res) => {
   let projects = readExcel("projects.xlsx");
@@ -222,6 +208,61 @@ app.delete("/projects/:id", authenticateToken, (req, res) => {
   writeExcel("projects.xlsx", projects);
   res.json({ message: "Project deleted successfully" });
 });
+
+app.get("/projects/faculty-list", authenticateToken, (req, res) => {
+  const data = readExcel("projects.xlsx");
+  const uniqueFaculty = [...new Set(data.map(p => p.facultyName).filter(Boolean))];
+  res.json(uniqueFaculty);
+});
+
+app.get("/projects/industry-list", authenticateToken, (req, res) => {
+  const data = readExcel("projects.xlsx");
+  const uniqueIndustries = [...new Set(data.map(p => p.industryName).filter(Boolean))];
+  res.json(uniqueIndustries);
+});
+
+app.get("/projects/academic-years", authenticateToken, (req, res) => {
+  const data = readExcel("projects.xlsx");
+  const years = [...new Set(data.map(p => p.academicYear).filter(Boolean))];
+  res.json(years);
+});
+
+app.get("/projects/download", authenticateToken, (req, res) => {
+  const { academicYear, minAmount, facultyName, industryName } = req.query;
+  let projects = readExcel("projects.xlsx");
+
+  if (academicYear) projects = projects.filter(p => p.academicYear === academicYear);
+  if (minAmount) projects = projects.filter(p => Number(p.amountSanctioned) >= Number(minAmount));
+  if (facultyName) projects = projects.filter(p => p.facultyName === facultyName);
+  if (industryName) projects = projects.filter(p => p.industryName === industryName);
+
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(projects);
+  XLSX.utils.book_append_sheet(workbook, worksheet, "FilteredProjects");
+
+  const tempPath = path.join(__dirname, "filtered-download.xlsx");
+  XLSX.writeFile(workbook, tempPath);
+
+  res.download(tempPath, "filtered-projects.xlsx", () => {
+    fs.unlinkSync(tempPath);
+  });
+});
+
+app.get("/projects/:id", authenticateToken, (req, res) => {
+  const id = parseInt(req.params.id);
+  const projects = readExcel("projects.xlsx");
+
+  const project = projects.find(
+    (p) => parseInt(p.ID) === id && p.createdBy === req.user.email
+  );
+
+  if (!project) {
+    return res.status(404).json({ message: "Project not found" });
+  }
+
+  res.json(project);
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

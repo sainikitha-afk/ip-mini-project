@@ -6,6 +6,7 @@ import ViewProject from "./components/ViewProject";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ProjectDashboard from "./components/ProjectDashboard";
+import DownloadProjects from './components/DownloadProjects';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth(); // Get user from AuthContext
@@ -21,6 +22,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/edit-project/:id" component={EditProjectForm} />
+          <Route path="/projects/download" element={ <ProtectedRoute> <DownloadProjects /> </ProtectedRoute> } />
 
           {/* Protect /projects routes */}
           <Route
