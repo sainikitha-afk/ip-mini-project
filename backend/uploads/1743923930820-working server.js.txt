@@ -1,0 +1,316 @@
+working server.js 
+const express = require("express");
+const multer = require("multer");
+const xlsx = require("xlsx");
+const fs = require("fs");
+const cors = require("cors");
+const bcrypt = require("bcrypt");
+const session = require("express-session");
+const path = require("path");
+
+const app = express();
+app.use(express.json());
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(session({
+    secret: "your_secret_key",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }
+}));
+
+const FILE_PATH = path.join(__dirname, "projects.xlsx");
+const USERS_FILE = path.join(__dirname, "users.xlsx"); // Changed to Excel
+const upload = multer({ dest: "uploads/" });
+
+// Ensure Excel files exist
+const initializeExcelFile = (filePath, sheetName, initialData = []) => {
+    if (!fs.existsSync(filePath)) {
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(initialData);
+        xlsx.utils.book_append_sheet(wb, ws, sheetName);
+        xlsx.writeFile(wb, filePath);
+    }
+};
+
+// Initialize files
+initializeExcelFile(FILE_PATH, "Projects");
+initializeExcelFile(USERS_FILE, "Users", [
+    { email: "admin@abc.edu", password: "$2b$10$EXAMPLEHASHEDPASSWORD" } // bcrypt hash for 'admin123'
+]);
+
+// Helper functions
+const readExcel = (filePath, sheetName) => {
+    const wb = xlsx.readFile(filePath);
+    const ws = wb.Sheets[sheetName];
+    return xlsx.utils.sheet_to_json(ws);
+};
+
+const writeExcel = (filePath, sheetName, data) => {
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(data);
+    xlsx.utils.book_append_sheet(wb, ws, sheetName);
+    xlsx.writeFile(wb, filePath);
+};
+
+// Authentication middleware
+const requireAuth = (req, res, next) => {
+    if (!req.session.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+    next();
+};
+
+// Register
+app.post("/register", async (req, res) => {
+    const { email, password } = req.body;
+    
+    if (!email.toLowerCase().endsWith("@ssn.edu.in")) {
+        return res.status(400).json({ message: "Only ssn.edu.in emails allowed" });
+    }
+    
+    try {
+        const users = readExcel(USERS_FILE, "Users");
+        if (users.find(u => u.email === email)) {
+            return res.status(400).json({ message: "Email already registered" });
+        }
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        users.push({ email, password: hashedPassword });
+        writeExcel(USERS_FILE, "Users", users);
+        
+        res.status(201).json({ message: "Registration successful" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Registration failed" });
+    }
+});
+
+// Login
+app.post("/login", async (req, res) => {
+    const { email, password } = req.body;
+    
+    try {
+        const users = readExcel(USERS_FILE, "Users");
+        const user = users.find(u => u.email === email);
+        
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+        
+        req.session.user = { email: user.email };
+        res.json({ message: "Login successful", email: user.email });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Login failed" });
+    }
+});
+
+// Logout
+app.post("/logout", (req, res) => {
+    req.session.destroy(() => res.json({ message: "Logged out" }));
+});
+
+// Check Auth
+app.get("/check-auth", (req, res) => {
+    res.json({ user: req.session.user || null });
+});
+
+// Project routes
+app.get("/projects", requireAuth, (req, res) => {
+    try {
+        const projects = readExcel(FILE_PATH, "Projects");
+        res.json(projects);
+    } catch (error) {
+        res.status(500).json({ message: "Error reading projects" });
+    }
+});
+
+app.get('/projects', (req, res) => {
+    try {
+      const projects = readExcel(PROJECTS_FILE);
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ message: "Error reading projects" });
+    }
+  });
+
+app.delete('/projects/:id', (req, res) => {
+    try {
+      let projects = readExcel(PROJECTS_FILE);
+      projects = projects.filter(p => p.ID != req.params.id);
+      writeExcel(PROJECTS_FILE, "Projects", projects);
+      res.json({ message: "Project deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting project" });
+    }
+  });
+
+app.post("/projects", requireAuth, upload.fields([
+    { name: 'billSettlement', maxCount: 1 },
+    { name: 'agreementDocument', maxCount: 1 }
+]), (req, res) => {
+    try {
+        const projects = readExcel(FILE_PATH, "Projects");
+        const formData = req.body;
+        const files = req.files;
+        
+        const newProject = {
+            ID: projects.length + 1,
+            ...formData,
+            "Industry Name": formData.industryName,
+            "Project Title": formData.projectTitle,
+            "Academic Year": formData.academicYear,
+            "Amount Sanctioned": formData.amountSanctioned,
+            "Principal Investigator": formData.principalInvestigator,
+            "Co-Principal Investigator": formData.coPrincipalInvestigator,
+            "Bill Settlement": files.billSettlement ? files.billSettlement[0].path : null,
+            "Agreement Document": files.agreementDocument ? files.agreementDocument[0].path : null,
+            "Created By": req.session.user.email,
+            "Created At": new Date().toISOString()
+        };
+        
+        projects.push(newProject);
+        writeExcel(FILE_PATH, "Projects", projects);
+        
+        res.status(201).json(newProject);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error creating project" });
+    }
+});
+
+app.put("/projects/:id", requireAuth, (req, res) => {
+    try {
+        let projects = readExcel(FILE_PATH, "Projects");
+        const index = projects.findIndex(p => p.ID == req.params.id);
+        
+        if (index === -1) return res.status(404).json({ message: "Project not found" });
+        
+        projects[index] = { 
+            ...projects[index], 
+            ...req.body,
+            "Updated At": new Date().toISOString()
+        };
+        
+        writeExcel(FILE_PATH, "Projects", projects);
+        res.json(projects[index]);
+    } catch (error) {
+        res.status(500).json({ message: "Error updating project" });
+    }
+});
+
+// Add this endpoint
+app.get("/check-auth", (req, res) => {
+    const userEmail = req.headers.authorization;
+    if (!userEmail) return res.status(401).json({ user: null });
+    
+    // Verify user exists (optional)
+    const users = readExcel(USERS_FILE);
+    const userExists = users.some(u => u.email === userEmail);
+    
+    res.json({ 
+      user: userExists ? { email: userEmail } : null 
+    });
+  });
+
+app.listen(5000, () => console.log("Server running on port 5000"));
+
+
+
+working App.js
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { AuthProvider } from "./context/AuthContext";
+import ProjectForm from "./components/ProjectForm";
+import ProjectList from "./components/ProjectList";
+import EditProjectForm from "./components/EditProjectForm";
+import ViewProject from "./components/ViewProject";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import ProjectDashboard from "./components/ProjectDashboard";
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const userEmail = localStorage.getItem("userEmail");
+      if (userEmail) {
+        try {
+          const response = await axios.get("http://localhost:5000/check-auth", {
+            headers: { Authorization: userEmail }
+          });
+          if (response.data.user) {
+            setUser(response.data.user);
+          }
+        } catch (error) {
+          localStorage.removeItem("userEmail");
+        }
+      }
+      setLoading(false);
+    };
+    checkAuth();
+  }, []);
+
+  const login = async (email, password) => {
+    try {
+      const response = await axios.post("http://localhost:5000/login", { email, password });
+      localStorage.setItem("userEmail", email);
+      setUser({ email });
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || "Login failed" };
+    }
+  };
+
+  const register = async (email, password) => {
+    try {
+      const response = await axios.post("http://localhost:5000/register", { email, password });
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || "Registration failed" };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await axios.post("http://localhost:5000/logout");
+      localStorage.removeItem("userEmail");
+      setUser(null);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <AuthProvider value={{ user, login, register, logout }}>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Navigate to={user ? "/projects" : "/login"} />} />
+          <Route path="/login" element={user ? <Navigate to="/projects" /> : <Login />} />
+          <Route path="/register" element={user ? <Navigate to="/projects" /> : <Register />} />
+          
+          {/* Unified projects route with dashboard */}
+          <Route path="/projects" element={user ? <ProjectDashboard /> : <Navigate to="/login" />}>
+            <Route index element={<ProjectList />} />
+            <Route path="add" element={<ProjectForm />} />
+            <Route path="edit/:id" element={<EditProjectForm />} />
+            <Route path="view/:id" element={<ViewProject />} />
+          </Route>
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
+
+
+
+
