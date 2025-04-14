@@ -59,4 +59,4 @@ Start frontend: cd frontend && npm start
 ✨ Contributors
 🧑‍💻 Sai Nikitha NSR (3122225001118)
 🧑‍💻 Shreyamanisha (3122225001130)
-🧑‍💻 Sai Nikitha NSR (3122225001140)
+🧑‍💻 Srinidhi Lakshmi Narayanan (3122225001140)
